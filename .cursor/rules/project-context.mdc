@@ -1,0 +1,24 @@
+---
+description: Read PROJECT_CONTEXT.md for repo state; update it minimally after implementation changes
+alwaysApply: true
+---
+
+# Living project context
+
+## On every conversation
+
+- **Read** `PROJECT_CONTEXT.md` at the repository root before planning or implementing features, so file layout, status, env vars, and API routes match reality.
+- Prefer `PROJECT_CONTEXT.md` over guessing where code lives.
+
+## After you implement or materially change the codebase
+
+- **Update** `PROJECT_CONTEXT.md` **only what is necessary**—do not rewrite the whole file for small edits.
+- Typical updates: folder tree (paths added/removed/renamed), new or changed **env vars**, new **HTTP routes**, new **major modules** (one-line note in "Important parts"), **implementation status** table rows when a milestone is truly done.
+- **Skip** context updates when the change is trivial (typos, comments-only, formatting) and nothing structural changed.
+- **Do not** paste long spec text here; link `System_Design_CoPilot_Plan.md` and `Project_Execution_Guide.md` instead.
+
+## Source order
+
+1. `PROJECT_CONTEXT.md` — current repo truth (layout, what is built).
+2. `System_Design_CoPilot_Plan.md` — product and architecture requirements.
+3. `Project_Execution_Guide.md` — recommended build sequence.

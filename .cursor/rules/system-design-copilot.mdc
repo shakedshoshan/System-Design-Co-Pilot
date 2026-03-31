@@ -1,0 +1,39 @@
+---
+description: Stack, workflow, and spec reference for AI System Design Co-Pilot
+alwaysApply: false
+---
+# AI System Design Co-Pilot
+
+## Source of truth
+
+- **What is implemented and where:** `PROJECT_CONTEXT.md` at the repo root (folder tree, routes, env, status). Read it when touching code; keep it updated per `project-context.mdc`.
+- **Product and architecture:** `System_Design_CoPilot_Plan.md`. When behavior, agents, or outputs are unclear, read that file before inventing requirements.
+
+## Intended stack (v1 spec)
+
+- **API**: FastAPI  
+- **Orchestration**: LangGraph (multi-agent pipeline)  
+- **Events**: Kafka  
+- **Data**: PostgreSQL + pgvector (state, metadata, RAG)  
+- **Observability**: OpenTelemetry (API, agents, tools, LLM calls)  
+- **Frontend**: Next.js (chat, document viewer, diagrams / canvas)
+
+**Separation:** `apps/web` and `apps/api` are separate apps (separate deps, separate containers). Business logic, DB, LangGraph, and Kafka belong in the API/worker. The web app consumes the API over HTTP; use FastAPI `CORSMiddleware` with explicit origins and/or Next.js `rewrites` to the backend. Prefer OpenAPI + `packages/contracts` for shared types—not duplicated orchestration in Next.js Route Handlers.
+
+Do not swap core technologies without an explicit user decision; note gaps as TODOs if something is undecided.
+
+## Phases and agent roles (implementation)
+
+**Phase 1 — Product**: idea → clarification → structured PRD (features, stories, edge cases).  
+**Phase 2 — Architecture**: pattern → technology → scalability → tradeoffs → red-team review → refinement loop.
+
+Specialized agent roles to preserve in prompts/graph nodes (names can vary in code): Technology Expert, Architecture Pattern, Scalability & Performance, Critical Thinking / Red Team, Tradeoff & Decision, Guided Questioning.
+
+## Core outputs to support
+
+Structured PRD; system design doc; architecture diagrams (prefer Mermaid where auto-generation is not wired yet); engineering roadmap with risks and mitigations.
+
+## Engineering habits
+
+- Prefer small, reviewable changes; match existing project layout once scaffolding exists.  
+- Treat guardrails, auditability, and prompt-injection awareness as first-class for any agent/tool boundary.
