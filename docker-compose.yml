@@ -10,8 +10,10 @@ services:
     image: pgvector/pgvector:pg16-bookworm
     container_name: sdc-postgres
     shm_size: "1gb"
+    # Host 5433 → container 5432 so a local Postgres on 5432 does not steal connections
+    # (see Docker docs: compose "HOST:CONTAINER" port publishing).
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5433:5432"
     environment:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: app

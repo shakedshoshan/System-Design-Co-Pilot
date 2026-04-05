@@ -21,8 +21,8 @@ Use the Cursor skill **`architecture-co-pilot-api`** or slash command **`/archit
 
 **In that workspace you should see**
 
-- **Collection:** **Architecture Co-Pilot** — folders **System** (**Health**, **Ready**, **OpenAPI JSON**) and **API v1** (empty until new routes ship).
-- **Environment:** **Architecture Co-Pilot — local** — variable **`baseUrl`** = `http://127.0.0.1:8000`. Select it in the environment dropdown before sending requests.
+- **Collection:** **Architecture Co-Pilot** — folders **System** (**Health**, **Ready**, **OpenAPI JSON**) and **API v1** → **Sessions** (**Create session**, **Chat (Step 4)**).
+- **Environment:** **Architecture Co-Pilot — local** — variables **`baseUrl`** = `http://127.0.0.1:8000`, **`sessionId`** = (paste UUID from Create session). Select it in the environment dropdown before sending requests.
 
 **Repo copies (import anywhere):** `postman/collections/Architecture-Co-Pilot.postman_collection.json` and `postman/collections/local.postman_environment.json`. Note: Postman Cloud sometimes imports that file as an **empty** collection; the canonical fix is recreating folders/requests via MCP (`create_folder`, `create_request`, then `update_request` for URLs)—see skill **architecture-co-pilot-api**.
 

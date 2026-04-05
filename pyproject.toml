@@ -12,6 +12,7 @@ system-design-copilot-api = { path = "apps/api", develop = true }
 
 [tool.poetry.scripts]
 api = "devtools.run_api:main"
+migrate = "devtools.run_migrate:main"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

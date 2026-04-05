@@ -4,7 +4,7 @@
 
 **Related docs:** [System_Design_CoPilot_Plan.md](./System_Design_CoPilot_Plan.md) (product/spec), [Project_Execution_Guide.md](./Project_Execution_Guide.md) (build order).
 
-**Last updated:** 2026-04-05 (Root Poetry: `pyproject.toml`, `poetry.toml`, `devtools/run_api`, script `poetry run api`)
+**Last updated:** 2026-04-05 (Step 4 LLM + session chat routes)
 
 ---
 
@@ -13,10 +13,10 @@
 | Area | Status | Notes |
 |------|--------|--------|
 | Repo / tooling | Step 0 done | `.env.example`, `.python-version`, `apps/api/pyproject.toml`, `apps/web/package.json` engines, root `README` + `.gitignore` |
-| Docker (Postgres+pgvector, Kafka) | Step 1 done | Root `docker-compose.yml`; `infra/docker/postgres/init/01-pgvector.sql`; Apache Kafka 3.9.x KRaft on `localhost:9092` |
+| Docker (Postgres+pgvector, Kafka) | Step 1 done | Root `docker-compose.yml` — Postgres on **host `127.0.0.1:5433`** → container 5432; Kafka KRaft `localhost:9092`; pgvector init under `infra/docker/postgres/init/` |
 | FastAPI API | Step 2+ infra | Envelopes + `http/errors.py`, `middleware/` (request id, access log), rotating JSON `logs/app.log` |
-| DB models / migrations | Not started | |
-| LLM integration | Not started | |
+| DB models / migrations | Step 3 done | SQLAlchemy 2.x + Alembic; tables `sessions`, `messages`, `artifacts`, `event_logs`; `apps/api/migrations/versions/20260405_0001_*.py` |
+| LLM integration | Step 4 done (thin path) | OpenAI `AsyncOpenAI` + `OpenAILLMProvider`; `POST /api/v1/sessions`, `POST /api/v1/sessions/{id}/chat`; guardrails in `app/services/llm/guardrails.py` |
 | LangGraph Phase 1 (PRD) | Not started | |
 | LangGraph Phase 2 (agents) | Not started | |
 | Kafka + worker | Not started | |
@@ -52,7 +52,7 @@ System Design Co-Pilot/
 ├── .python-version               # 3.12.x (API + worker)
 ├── pyproject.toml                # Poetry (root venv + path dep apps/api)
 ├── poetry.toml                   # virtualenv in-project → .venv/
-├── devtools/                     # `run_api` console entry for `poetry run api`
+├── devtools/                     # `run_api`, `run_migrate` (Poetry scripts)
 ├── README.md
 ├── architecture-co-pilot/        # Postman exports + API workspace docs (see README there)
 ├── docker-compose.yml            # Postgres+pgvector, Kafka (KRaft)
@@ -63,7 +63,7 @@ System Design Co-Pilot/
 │   │   │   ├── core/           # Settings, config, lifespan hooks
 │   │   │   ├── http/           # Exception handlers → unified error JSON
 │   │   │   ├── middleware/     # X-Request-ID, structured access log
-│   │   │   ├── schemas/        # API envelopes (success/error + meta)
+│   │   │   ├── schemas/        # API envelopes + `architecture_copilot/` DTOs
 │   │   │   ├── routers/        # HTTP routes (+ architecture_copilot/ → /api/v1)
 │   │   │   ├── services/       # Orchestration helpers
 │   │   │   │   ├── llm/        # Provider abstraction, calls
@@ -73,11 +73,11 @@ System Design Co-Pilot/
 │   │   │   │   ├── phase1_product/   # Idea → PRD (guided Q, synthesis)
 │   │   │   │   └── phase2_architecture/  # Agent pipeline (pattern, tech, scale, tradeoffs, red team)
 │   │   │   ├── agents/         # Agent node builders, prompts, tools per role
-│   │   │   ├── db/             # Session, SQLAlchemy models, repos
+│   │   │   ├── db/             # Base, `models/`, session, `schema.sql` — see `app/db/README.md`
 │   │   │   ├── schemas/        # Pydantic request/response DTOs
 │   │   │   ├── kafka/          # Producers (events to worker / bus)
 │   │   │   └── observability/  # OpenTelemetry setup, instrumentation helpers
-│   │   ├── alembic/            # Migrations (`versions/`)
+│   │   ├── migrations/         # Alembic (`versions/`); not named `alembic` — avoids shadowing the PyPI package
 │   │   ├── pyproject.toml      # Python project + `requires-python`
 │   │   └── tests/              # `unit/`, `integration/`
 │   ├── worker/                 # Kafka consumers — long-running agent jobs
@@ -99,10 +99,10 @@ System Design Co-Pilot/
 ├── infra/
 │   ├── docker/                 # Dockerfiles per service; postgres/init → pgvector enable
 │   └── kubernetes/             # Kustomize-style: base/, overlays/dev|prod/
-└── scripts/                    # Dev, migrate, seed helpers
+└── scripts/                    # `docker_up_postgres.ps1`
 ```
 
-**Current repo:** Step 2 complete (API skeleton). Next: Step 3 (DB models + Alembic), scaffold Next when you start the web app.
+**Current repo:** Step 4 complete (OpenAI chat + persisted messages). Next: Step 5 (LangGraph Phase 1) or Next.js when you start the web app.
 
 ---
 
@@ -136,7 +136,11 @@ See root [`.env.example`](./.env.example) for descriptions. Summary:
 | `DATABASE_URL` | API, Alembic | PostgreSQL connection |
 | `APP_ENV` | API | `local` (default) or `production` — stdout format + hides internal errors when `production` |
 | `LOG_TO_FILE`, `LOG_FILE`, `LOG_LEVEL`, `LOG_MAX_MB`, `LOG_BACKUP_COUNT` | API | Rotating JSON logs under `apps/api/logs` (default on) |
-| `OPENAI_API_KEY` | API | LLM provider (Step 4+) |
+| `OPENAI_API_KEY` | API | OpenAI API key (required for chat) |
+| `LLM_MODEL` | API | Default chat model (default `gpt-4o`) |
+| `LLM_TIMEOUT_SECONDS` | API | OpenAI client timeout (default `120`) |
+| `LLM_CONTEXT_MESSAGE_LIMIT` | API | Max prior messages sent to the model (default `50`) |
+| `LLM_MAX_OUTPUT_CHARS` | API | Assistant reply cap after sanitization (default `32000`) |
 | `KAFKA_BOOTSTRAP_SERVERS` | API, worker | Kafka brokers |
 | `CORS_ORIGINS` | API | Allowed browser origins (comma-separated) |
 | `NEXT_PUBLIC_API_URL` | Web | FastAPI base URL (browser) |
@@ -153,7 +157,8 @@ Update when routes exist.
 |--------|------|---------|
 | GET | `/health` | Liveness — body `{ data, meta }` |
 | GET | `/ready` | Readiness — same envelope; 503 uses `{ error, meta }` |
-| _TBD_ | _TBD_ | _TBD_ |
+| POST | `/api/v1/sessions` | Create `DesignSession` — body `{ title? }`, returns `data.session` |
+| POST | `/api/v1/sessions/{session_id}/chat` | User message → OpenAI → assistant message persisted — body `{ content }`, returns `data.chat` |
 
 ---
 
@@ -165,9 +170,13 @@ Add one-line pointers as you implement—**only** what helps the next developer 
 |-------|----------|------|
 | Local DB + Kafka | `docker-compose.yml` | `postgres` (pgvector), `kafka`; see root `README.md` |
 | Run API | repo root or `apps/api` | **Poetry:** `poetry install` then `poetry run api` (`.venv/` at root). **pip:** `apps/api` venv + `uvicorn app.main:app --reload`. Env: repo root `.env` |
+| Database | `app/db/README.md`, `app/db/schema.sql` | ORM; readable DDL snapshot (`schema.sql` ↔ initial migration); `poetry run migrate …` |
+| ORM models | `app/db/models/__init__.py` | `DesignSession`, `Message`, `Artifact`, `EventLog` |
+| Alembic | repo root | `poetry run migrate upgrade head` — `devtools/run_migrate.py` → `.venv` + `alembic -c apps/api/alembic.ini` |
 | API errors / correlation | `app/http/errors.py`, `middleware/` | `AppError`, validation + 500 handlers; `X-Request-ID` header |
 | Log files | `apps/api/logs/app.log` | JSON lines (rotation); gitignored |
 | New product endpoints + Postman | `.cursor/skills/architecture-co-pilot-api/`, `architecture-co-pilot/` | Postman workspace **`architecture-co-pilot`**; collection **Architecture Co-Pilot**; env **Architecture Co-Pilot — local**; repo `postman/collections/*.json` |
+| LLM (OpenAI) | `app/services/llm/`, `app/main.py` lifespan | `AsyncOpenAI` in app lifespan; `OpenAILLMProvider.chat_completion`; `get_llm_provider` in `core/deps.py` |
 
 ---
 

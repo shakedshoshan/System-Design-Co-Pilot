@@ -23,13 +23,19 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     database_url: str | None = None
 
+    openai_api_key: str | None = None
+    llm_model: str = "gpt-4o"
+    llm_timeout_seconds: float = 120.0
+    llm_max_output_chars: int = 32_000
+    llm_context_message_limit: int = 50
+
     log_to_file: bool = True
     log_file: str | None = None
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     log_max_mb: int = 10
     log_backup_count: int = 5
 
-    @field_validator("database_url", "log_file", mode="before")
+    @field_validator("database_url", "log_file", "openai_api_key", mode="before")
     @classmethod
     def empty_str_to_none(cls, v: object) -> object:
         if v == "":

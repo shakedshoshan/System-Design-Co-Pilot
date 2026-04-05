@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Architecture Co-Pilot",
-    "description": "System Design Co-Pilot FastAPI. Cloud copy: Postman workspace (collection id 50105dc2-9629-42de-ba24-5601742c5ac2). Import this file to sync locally.",
+    "description": "System Design Co-Pilot FastAPI. Postman Cloud: workspace **architecture-co-pilot**, collection id `c479fe3d-3c7f-46c5-b1ea-0dee09c066a7`. Collection vars: `baseUrl` (default `http://127.0.0.1:8000`), `sessionId` (UUID from Create session).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -23,9 +23,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/health"
+              "raw": "{{baseUrl}}/health",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "8000",
+              "path": ["health"]
             },
-            "description": "Liveness. Body: { data: { status }, meta: { request_id, timestamp } }."
+            "description": "Example: `GET http://127.0.0.1:8000/health`. Body: `{ data, meta }`."
           },
           "response": []
         },
@@ -43,9 +47,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/ready"
+              "raw": "{{baseUrl}}/ready",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "8000",
+              "path": ["ready"]
             },
-            "description": "Readiness (PostgreSQL). 503 uses { error, meta } if DB missing or unreachable."
+            "description": "Example: `GET http://127.0.0.1:8000/ready`. 503 if DB unreachable."
           },
           "response": []
         },
@@ -55,9 +63,13 @@
             "method": "GET",
             "header": [{ "key": "Accept", "value": "application/json" }],
             "url": {
-              "raw": "{{baseUrl}}/openapi.json"
+              "raw": "{{baseUrl}}/openapi.json",
+              "protocol": "http",
+              "host": ["127", "0", "0", "1"],
+              "port": "8000",
+              "path": ["openapi.json"]
             },
-            "description": "OpenAPI 3 schema for contracts / codegen."
+            "description": "Example: `GET http://127.0.0.1:8000/openapi.json`."
           },
           "response": []
         }
@@ -65,14 +77,72 @@
     },
     {
       "name": "API v1",
-      "description": "Product routes — FastAPI prefix /api/v1 (architecture_copilot router). Add requests here as endpoints ship.",
-      "item": []
+      "description": "Product routes — FastAPI prefix `/api/v1` (architecture_copilot router).",
+      "item": [
+        {
+          "name": "Sessions",
+          "description": "Design sessions and Step 4 chat (OpenAI).",
+          "item": [
+            {
+              "name": "Create session",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"URL shortener idea\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sessions",
+                  "protocol": "http",
+                  "host": ["127", "0", "0", "1"],
+                  "port": "8000",
+                  "path": ["api", "v1", "sessions"]
+                },
+                "description": "Example: `POST http://127.0.0.1:8000/api/v1/sessions`. 201 — `data.session`."
+              },
+              "response": []
+            },
+            {
+              "name": "Chat (Step 4)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"I want to build a URL shortener for internal tools. What should I clarify first?\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sessions/{{sessionId}}/chat",
+                  "protocol": "http",
+                  "host": ["127", "0", "0", "1"],
+                  "port": "8000",
+                  "path": ["api", "v1", "sessions", "{{sessionId}}", "chat"]
+                },
+                "description": "Example: `POST http://127.0.0.1:8000/api/v1/sessions/<session-uuid>/chat`. Set `sessionId` in environment or collection."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
     {
       "key": "baseUrl",
       "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
       "type": "string"
     }
   ]

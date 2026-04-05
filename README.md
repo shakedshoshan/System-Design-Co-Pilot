@@ -41,6 +41,8 @@ poetry run api
 
 - **`poetry.toml`** sets **`in-project = true`**, so the environment lives in **`.venv/`** at the repo root.
 - **`poetry run api`** runs FastAPI with reload (see **`devtools/run_api.py`** and `[tool.poetry.scripts]` in root **`pyproject.toml`**).
+- **`poetry run migrate upgrade head`** applies DB migrations via **`.venv`** (see **`devtools/run_migrate.py`**). Prefer this over `poetry run alembic …` if another Conda/global env interferes.
+- **Docker Postgres:** **`.\scripts\docker_up_postgres.ps1`**, then **`poetry run migrate upgrade head`**. Details: **`apps/api/app/db/README.md`**.
 - The API package is pulled in as a path dependency from **`apps/api`** (editable).
 
 If Poetry picks the wrong interpreter, set it explicitly, e.g. `poetry env use "C:\Path\To\python.exe"`, then `poetry install`.
@@ -57,7 +59,7 @@ Requires [Docker](https://docs.docker.com/get-docker/) (Docker Desktop on Window
 docker compose up -d
 ```
 
-- **PostgreSQL 16 + pgvector** — `localhost:5432`, user/db/password match `.env.example` (`app` / `system_design_copilot`).
+- **PostgreSQL 16 + pgvector (Docker)** — `localhost:5433` on the host (maps to 5432 in the container); user/db/password match `.env.example` (`app` / `system_design_copilot`).
 - **Kafka (KRaft, Apache image)** — `localhost:9092` (same as `KAFKA_BOOTSTRAP_SERVERS` in `.env.example`).
 
 Verify Postgres (after containers are healthy):
@@ -93,4 +95,4 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 `API_HOST` / `API_PORT` in `.env` are documented for later process managers; the command above uses uvicorn flags directly.
 
-Next: **Step 3** in [Project_Execution_Guide.md](./Project_Execution_Guide.md) — database schema and Alembic.
+Next: **Step 4** in [Project_Execution_Guide.md](./Project_Execution_Guide.md) — LLM integration (schema and Alembic are in place; see **`apps/api/app/db/README.md`**).
