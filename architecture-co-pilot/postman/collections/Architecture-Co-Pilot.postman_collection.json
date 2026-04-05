@@ -81,7 +81,7 @@
       "item": [
         {
           "name": "Sessions",
-          "description": "Design sessions and Step 4 chat (OpenAI).",
+          "description": "Design sessions; `phase=product` uses LangGraph Phase 1 (guided Q + PRD). Other phases use single-call chat.",
           "item": [
             {
               "name": "Create session",
@@ -107,7 +107,7 @@
               "response": []
             },
             {
-              "name": "Chat (Step 4)",
+              "name": "Chat (product phase)",
               "request": {
                 "method": "POST",
                 "header": [
@@ -116,7 +116,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"content\": \"I want to build a URL shortener for internal tools. What should I clarify first?\"\n}"
+                  "raw": "{\n  \"content\": \"I want to build a URL shortener for internal tools. What should I clarify first?\",\n  \"product_action\": \"default\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/sessions/{{sessionId}}/chat",
@@ -125,7 +125,30 @@
                   "port": "8000",
                   "path": ["api", "v1", "sessions", "{{sessionId}}", "chat"]
                 },
-                "description": "Example: `POST http://127.0.0.1:8000/api/v1/sessions/<session-uuid>/chat`. Set `sessionId` in environment or collection."
+                "description": "When session `phase` is `product`, runs LangGraph (guided questioning, optional PRD synthesis). Optional `product_action`: `default` | `synthesize_prd` (force PRD). Response may include `prd_artifact_id`, `prd_version`, `phase1_ready_for_architecture`."
+              },
+              "response": []
+            },
+            {
+              "name": "Chat — force PRD synthesis",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"Please generate the PRD now from what we have.\",\n  \"product_action\": \"synthesize_prd\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sessions/{{sessionId}}/chat",
+                  "protocol": "http",
+                  "host": ["127", "0", "0", "1"],
+                  "port": "8000",
+                  "path": ["api", "v1", "sessions", "{{sessionId}}", "chat"]
+                },
+                "description": "Same route as Chat (product phase); forces the PRD synthesis node even if the model would still ask questions."
               },
               "response": []
             }

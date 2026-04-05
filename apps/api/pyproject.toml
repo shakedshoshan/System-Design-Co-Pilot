@@ -11,6 +11,7 @@ dependencies = [
     "sqlalchemy>=2.0,<3",
     "alembic>=1.14,<2",
     "openai>=1.82,<3",
+    "langgraph>=0.2,<1",
 ]
 
 [build-system]

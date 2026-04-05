@@ -19,6 +19,7 @@ from app.schemas.architecture_copilot.sessions import (
 from app.schemas.responses import success_body
 from app.services.llm.guardrails import sanitize_assistant_output, sanitize_user_message
 from app.services.llm.prompts import DEFAULT_SYSTEM_PROMPT
+from app.services.phase1.runner import run_phase1_turn
 
 logger = logging.getLogger("app.sessions")
 
@@ -61,6 +62,56 @@ async def chat_in_session(
     user_msg = Message(session_id=session_id, role="user", content=user_text)
     db.add(user_msg)
     db.flush()
+
+    # `synthesize_prd` skips waiting for guided agent's ready_for_prd and runs PRD synthesis.
+    force_prd = body.product_action == "synthesize_prd"
+
+    # Step 5: product phase uses LangGraph (guided Q → optional PRD). Other phases keep Step 4 single-call chat.
+    if session.phase == "product":
+        try:
+            phase1 = await run_phase1_turn(
+                db,
+                session_id,
+                settings,
+                llm,
+                force_synthesize=force_prd,
+            )
+        except openai.RateLimitError as e:
+            logger.warning("chat_rate_limited", extra={"session_id": str(session_id)})
+            raise AppError(
+                code="llm_rate_limited",
+                message="The model provider rate limit was hit. Try again shortly.",
+                status_code=429,
+                details={"provider": "openai"},
+            ) from e
+        except openai.APIError as e:
+            logger.warning(
+                "chat_provider_error",
+                extra={"session_id": str(session_id), "err": type(e).__name__},
+            )
+            raise AppError(
+                code="llm_provider_error",
+                message="The language model request failed.",
+                status_code=502,
+                details={"provider": "openai", "error_type": type(e).__name__},
+            ) from e
+        reply = sanitize_assistant_output(
+            phase1.assistant_reply, max_chars=settings.llm_max_output_chars
+        )
+        assistant_msg = Message(session_id=session_id, role="assistant", content=reply)
+        db.add(assistant_msg)
+        db.commit()
+        db.refresh(user_msg)
+        db.refresh(assistant_msg)
+        result = ChatResult(
+            user_message_id=user_msg.id,
+            assistant_message_id=assistant_msg.id,
+            assistant_content=reply,
+            prd_artifact_id=phase1.prd_artifact_id,
+            prd_version=phase1.prd_version,
+            phase1_ready_for_architecture=phase1.wrote_prd,
+        )
+        return success_body({"chat": result.model_dump(mode="json")}, request_id=request_id)
 
     stmt = (
         select(Message)
@@ -113,5 +164,8 @@ async def chat_in_session(
         user_message_id=user_msg.id,
         assistant_message_id=assistant_msg.id,
         assistant_content=reply,
+        prd_artifact_id=None,
+        prd_version=None,
+        phase1_ready_for_architecture=None,
     )
     return success_body({"chat": result.model_dump(mode="json")}, request_id=request_id)
