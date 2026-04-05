@@ -1,0 +1,79 @@
+{
+  "info": {
+    "name": "Architecture Co-Pilot",
+    "description": "System Design Co-Pilot FastAPI. Cloud copy: Postman workspace (collection id 50105dc2-9629-42de-ba24-5601742c5ac2). Import this file to sync locally.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "System",
+      "description": "Liveness, readiness, and OpenAPI (root paths — not under /api/v1).",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              {
+                "key": "X-Request-ID",
+                "value": "",
+                "description": "Optional; enable and set to correlate logs.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health"
+            },
+            "description": "Liveness. Body: { data: { status }, meta: { request_id, timestamp } }."
+          },
+          "response": []
+        },
+        {
+          "name": "Ready",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              {
+                "key": "X-Request-ID",
+                "value": "",
+                "description": "Optional correlation id.",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ready"
+            },
+            "description": "Readiness (PostgreSQL). 503 uses { error, meta } if DB missing or unreachable."
+          },
+          "response": []
+        },
+        {
+          "name": "OpenAPI JSON",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/openapi.json"
+            },
+            "description": "OpenAPI 3 schema for contracts / codegen."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "API v1",
+      "description": "Product routes — FastAPI prefix /api/v1 (architecture_copilot router). Add requests here as endpoints ship.",
+      "item": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    }
+  ]
+}

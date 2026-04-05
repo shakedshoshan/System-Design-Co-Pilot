@@ -35,4 +35,5 @@ Thumbs.db
 
 # Logs
 *.log
+apps/api/logs/
 npm-debug.log*

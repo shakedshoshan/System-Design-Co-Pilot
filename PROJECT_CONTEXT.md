@@ -4,7 +4,7 @@
 
 **Related docs:** [System_Design_CoPilot_Plan.md](./System_Design_CoPilot_Plan.md) (product/spec), [Project_Execution_Guide.md](./Project_Execution_Guide.md) (build order).
 
-**Last updated:** 2026-03-31 (Step 1: root `docker-compose.yml`, Postgres+pgvector init, Kafka KRaft)
+**Last updated:** 2026-04-05 (Root Poetry: `pyproject.toml`, `poetry.toml`, `devtools/run_api`, script `poetry run api`)
 
 ---
 
@@ -14,7 +14,7 @@
 |------|--------|--------|
 | Repo / tooling | Step 0 done | `.env.example`, `.python-version`, `apps/api/pyproject.toml`, `apps/web/package.json` engines, root `README` + `.gitignore` |
 | Docker (Postgres+pgvector, Kafka) | Step 1 done | Root `docker-compose.yml`; `infra/docker/postgres/init/01-pgvector.sql`; Apache Kafka 3.9.x KRaft on `localhost:9092` |
-| FastAPI API | Not started | |
+| FastAPI API | Step 2+ infra | Envelopes + `http/errors.py`, `middleware/` (request id, access log), rotating JSON `logs/app.log` |
 | DB models / migrations | Not started | |
 | LLM integration | Not started | |
 | LangGraph Phase 1 (PRD) | Not started | |
@@ -41,21 +41,30 @@ Adjust this tree when you create or rename paths. Omit `__pycache__`, `node_modu
 System Design Co-Pilot/
 ├── .cursor/
 │   ├── rules/
-│   └── commands/               # Cursor slash commands (e.g. align-with-plan, optimize-conversation-build)
+│   ├── commands/               # Slash commands (align-with-plan, architecture-co-pilot-api, …)
+│   └── skills/
+│       └── architecture-co-pilot-api/   # SKILL.md — API + Postman MCP workflow
 ├── PROJECT_CONTEXT.md
 ├── System_Design_CoPilot_Plan.md
 ├── Project_Execution_Guide.md
 ├── .env.example                  # Documented vars (no secrets)
 ├── .gitignore
 ├── .python-version               # 3.12.x (API + worker)
+├── pyproject.toml                # Poetry (root venv + path dep apps/api)
+├── poetry.toml                   # virtualenv in-project → .venv/
+├── devtools/                     # `run_api` console entry for `poetry run api`
 ├── README.md
+├── architecture-co-pilot/        # Postman exports + API workspace docs (see README there)
 ├── docker-compose.yml            # Postgres+pgvector, Kafka (KRaft)
 ├── apps/
 │   ├── api/                      # FastAPI — HTTP, DB, LangGraph entry from API
 │   │   ├── app/
-│   │   │   ├── main.py         # (planned) App factory / entry
+│   │   │   ├── main.py         # App factory, CORS, mounts routers
 │   │   │   ├── core/           # Settings, config, lifespan hooks
-│   │   │   ├── routers/        # HTTP routes
+│   │   │   ├── http/           # Exception handlers → unified error JSON
+│   │   │   ├── middleware/     # X-Request-ID, structured access log
+│   │   │   ├── schemas/        # API envelopes (success/error + meta)
+│   │   │   ├── routers/        # HTTP routes (+ architecture_copilot/ → /api/v1)
 │   │   │   ├── services/       # Orchestration helpers
 │   │   │   │   ├── llm/        # Provider abstraction, calls
 │   │   │   │   └── rag/        # Embeddings retrieval (pgvector)
@@ -93,7 +102,7 @@ System Design Co-Pilot/
 └── scripts/                    # Dev, migrate, seed helpers
 ```
 
-**Current repo:** Step 1 complete (Compose). Next: Step 2 (`main.py`, FastAPI deps in `pyproject.toml`), scaffold Next when you start the web app.
+**Current repo:** Step 2 complete (API skeleton). Next: Step 3 (DB models + Alembic), scaffold Next when you start the web app.
 
 ---
 
@@ -125,6 +134,8 @@ See root [`.env.example`](./.env.example) for descriptions. Summary:
 | Variable | Used by | Purpose |
 |----------|---------|---------|
 | `DATABASE_URL` | API, Alembic | PostgreSQL connection |
+| `APP_ENV` | API | `local` (default) or `production` — stdout format + hides internal errors when `production` |
+| `LOG_TO_FILE`, `LOG_FILE`, `LOG_LEVEL`, `LOG_MAX_MB`, `LOG_BACKUP_COUNT` | API | Rotating JSON logs under `apps/api/logs` (default on) |
 | `OPENAI_API_KEY` | API | LLM provider (Step 4+) |
 | `KAFKA_BOOTSTRAP_SERVERS` | API, worker | Kafka brokers |
 | `CORS_ORIGINS` | API | Allowed browser origins (comma-separated) |
@@ -140,8 +151,8 @@ Update when routes exist.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/health` | Liveness |
-| GET | `/ready` | Readiness (e.g. DB) |
+| GET | `/health` | Liveness — body `{ data, meta }` |
+| GET | `/ready` | Readiness — same envelope; 503 uses `{ error, meta }` |
 | _TBD_ | _TBD_ | _TBD_ |
 
 ---
@@ -153,12 +164,16 @@ Add one-line pointers as you implement—**only** what helps the next developer 
 | Topic | Location | Note |
 |-------|----------|------|
 | Local DB + Kafka | `docker-compose.yml` | `postgres` (pgvector), `kafka`; see root `README.md` |
+| Run API | repo root or `apps/api` | **Poetry:** `poetry install` then `poetry run api` (`.venv/` at root). **pip:** `apps/api` venv + `uvicorn app.main:app --reload`. Env: repo root `.env` |
+| API errors / correlation | `app/http/errors.py`, `middleware/` | `AppError`, validation + 500 handlers; `X-Request-ID` header |
+| Log files | `apps/api/logs/app.log` | JSON lines (rotation); gitignored |
+| New product endpoints + Postman | `.cursor/skills/architecture-co-pilot-api/`, `architecture-co-pilot/` | Postman workspace **`architecture-co-pilot`**; collection **Architecture Co-Pilot**; env **Architecture Co-Pilot — local**; repo `postman/collections/*.json` |
 
 ---
 
 ## Conventions
 
-- **Python:** 3.12.x (`.python-version`, `apps/api/pyproject.toml` `requires-python`)
+- **Python:** 3.12.x recommended (`.python-version`); **3.11+** allowed (`pyproject.toml` / `apps/api` for local Poetry/pip)
 - **Node:** ≥20.10 (`apps/web/package.json` `engines`)
 - **TypeScript / lint:** _TBD_ when Next.js is scaffolded
 - **Branching / commits:** _TBD_
