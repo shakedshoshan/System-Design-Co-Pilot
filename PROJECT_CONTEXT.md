@@ -4,7 +4,9 @@
 
 **Related docs:** [System_Design_CoPilot_Plan.md](./System_Design_CoPilot_Plan.md) (product/spec), [Project_Execution_Guide.md](./Project_Execution_Guide.md) (build order).
 
-**Last updated:** 2026-04-05 (Step 5 + Phase 1 flow doc `docs/Phase1_Product_LangGraph_Flow.md`)
+**LangGraph walkthroughs (API app):** [Phase 1 — product → PRD](./apps/api/app/graph/docs/Phase1_Product_LangGraph_Flow.md), [Phase 2 — architecture agents](./apps/api/app/graph/docs/Phase2_Architecture_LangGraph_Flow.md).
+
+**Last updated:** 2026-04-05 (graph `docs/`, folder tree, Related docs)
 
 ---
 
@@ -18,7 +20,7 @@
 | DB models / migrations | Step 3 done | SQLAlchemy 2.x + Alembic; tables `sessions`, `messages`, `artifacts`, `event_logs`; `apps/api/migrations/versions/20260405_0001_*.py` |
 | LLM integration | Step 4+5 | OpenAI `AsyncOpenAI` + `OpenAILLMProvider`; guardrails in `app/services/llm/guardrails.py` |
 | LangGraph Phase 1 (PRD) | Step 5 done | `session.phase == "product"` → `app/graph/phase1_product` (guided Q + PRD synthesis) via `app/services/phase1/runner.py`; `artifact_type=prd` versioned rows |
-| LangGraph Phase 2 (agents) | Not started | |
+| LangGraph Phase 2 (agents) | Step 6 done | `PATCH /api/v1/sessions/{id}` → `phase=architecture` (needs PRD); `POST .../architecture/run` runs graph; `app/graph/phase2_architecture/` + `app/services/phase2/runner.py`; five `architecture_*` artifact types; flow [Phase2 doc](./apps/api/app/graph/docs/Phase2_Architecture_LangGraph_Flow.md) |
 | Kafka + worker | Not started | |
 | RAG / pgvector usage | Not started | |
 | OpenTelemetry | Not started | |
@@ -68,14 +70,15 @@ System Design Co-Pilot/
 │   │   │   ├── services/       # Orchestration helpers
 │   │   │   │   ├── llm/        # Provider abstraction, calls
 │   │   │   │   ├── phase1/     # Product-phase graph runner (hydrate state, PRD artifact)
+│   │   │   │   ├── phase2/     # Architecture pipeline (five agents → artifacts)
 │   │   │   │   └── rag/        # Embeddings retrieval (pgvector)
 │   │   │   ├── graph/          # LangGraph: compiled graphs, wiring
-│   │   │   │   ├── state/      # Shared graph state schemas
+│   │   │   │   ├── docs/       # Phase1_Product_LangGraph_Flow.md, Phase2_Architecture_LangGraph_Flow.md
+│   │   │   │   ├── state/      # Shared graph state (`phase1`, `phase2` TypedDicts)
 │   │   │   │   ├── phase1_product/   # Idea → PRD (guided Q, synthesis)
-│   │   │   │   └── phase2_architecture/  # Agent pipeline (pattern, tech, scale, tradeoffs, red team)
-│   │   │   ├── agents/         # Agent node builders, prompts, tools per role
+│   │   │   │   └── phase2_architecture/  # build.py; subpackages nodes/, prompts/, schemas/, parsing/ (README)
+│   │   │   ├── agents/         # Reserved (empty); phase agents live under graph/phase*_*/
 │   │   │   ├── db/             # Base, `models/`, session, `schema.sql` — see `app/db/README.md`
-│   │   │   ├── schemas/        # Pydantic request/response DTOs
 │   │   │   ├── kafka/          # Producers (events to worker / bus)
 │   │   │   └── observability/  # OpenTelemetry setup, instrumentation helpers
 │   │   ├── migrations/         # Alembic (`versions/`); not named `alembic` — avoids shadowing the PyPI package
@@ -103,7 +106,7 @@ System Design Co-Pilot/
 └── scripts/                    # `docker_up_postgres.ps1`
 ```
 
-**Current repo:** Step 5 complete (LangGraph Phase 1 for `product` sessions). Next: Step 6 (architecture agents) or Next.js.
+**Current repo:** Step 6 complete (architecture phase + five-agent graph). Next: Step 7 (Kafka) or Next.js.
 
 ---
 
@@ -139,7 +142,7 @@ See root [`.env.example`](./.env.example) for descriptions. Summary:
 | `LOG_TO_FILE`, `LOG_FILE`, `LOG_LEVEL`, `LOG_MAX_MB`, `LOG_BACKUP_COUNT` | API | Rotating JSON logs under `apps/api/logs` (default on) |
 | `OPENAI_API_KEY` | API | OpenAI API key (required for chat) |
 | `LLM_MODEL` | API | Default chat model (default `gpt-4o`) |
-| `LLM_TIMEOUT_SECONDS` | API | OpenAI client timeout (default `120`) |
+| `LLM_TIMEOUT_SECONDS` | API | OpenAI client timeout per request (default `120`); Phase 2 runs five calls in one HTTP request — increase if needed |
 | `LLM_CONTEXT_MESSAGE_LIMIT` | API | Max prior messages sent to the model (default `50`) |
 | `LLM_MAX_OUTPUT_CHARS` | API | Assistant reply cap after sanitization (default `32000`) |
 | `KAFKA_BOOTSTRAP_SERVERS` | API, worker | Kafka brokers |
@@ -150,9 +153,9 @@ See root [`.env.example`](./.env.example) for descriptions. Summary:
 
 ---
 
-## API surface (planned)
+## API surface (architecture-co-pilot `/api/v1`)
 
-Update when routes exist.
+Update when routes change.
 
 | Method | Path | Purpose |
 |--------|------|---------|
@@ -160,6 +163,8 @@ Update when routes exist.
 | GET | `/ready` | Readiness — same envelope; 503 uses `{ error, meta }` |
 | POST | `/api/v1/sessions` | Create `DesignSession` — body `{ title? }`, returns `data.session` |
 | POST | `/api/v1/sessions/{session_id}/chat` | Body `{ content, product_action? }` (`default` \| `synthesize_prd`). If `phase` is `product`: LangGraph guided Q → optional PRD synthesis; else single-call chat (Step 4). Returns `data.chat` with optional `prd_artifact_id`, `prd_version`, `phase1_ready_for_architecture` |
+| PATCH | `/api/v1/sessions/{session_id}` | Body `{ "phase": "architecture" }` — requires a `prd` artifact; idempotent if already `architecture`. Returns `data.session` |
+| POST | `/api/v1/sessions/{session_id}/architecture/run` | Body `{ notes? }`. Requires `phase=architecture` and PRD. Runs Phase 2 LangGraph; returns `data.architecture_run` (artifact refs + assistant message ids) |
 
 ---
 
@@ -178,7 +183,9 @@ Add one-line pointers as you implement—**only** what helps the next developer 
 | Log files | `apps/api/logs/app.log` | JSON lines (rotation); gitignored |
 | New product endpoints + Postman | `.cursor/skills/architecture-co-pilot-api/`, `architecture-co-pilot/` | Postman workspace **`architecture-co-pilot`**; collection **Architecture Co-Pilot**; env **Architecture Co-Pilot — local**; repo `postman/collections/*.json` |
 | LLM (OpenAI) | `app/services/llm/`, `app/main.py` lifespan | `AsyncOpenAI` in app lifespan; `OpenAILLMProvider.chat_completion`; `get_llm_provider` in `core/deps.py` |
-| LangGraph Phase 1 | `app/graph/phase1_product/`, `app/services/phase1/runner.py` | `build_phase1_graph()`; product-phase chat in `routers/architecture_copilot/sessions.py`; narrative flow [docs/Phase1_Product_LangGraph_Flow.md](./docs/Phase1_Product_LangGraph_Flow.md) |
+| LangGraph Phase 1 | `app/graph/phase1_product/`, `app/services/phase1/runner.py` | `build_phase1_graph()`; product-phase chat in `routers/architecture_copilot/sessions.py`; [Phase1_Product_LangGraph_Flow.md](./apps/api/app/graph/docs/Phase1_Product_LangGraph_Flow.md) |
+| LangGraph Phase 2 | `app/graph/phase2_architecture/README.md`, `app/services/phase2/runner.py`, `app/graph/state/phase2.py` | `build_phase2_graph()`; `nodes/` · `prompts/` · `schemas/` · `parsing/`; [Phase2_Architecture_LangGraph_Flow.md](./apps/api/app/graph/docs/Phase2_Architecture_LangGraph_Flow.md); `sessions.py`: PATCH + `POST .../architecture/run` |
+| Phase 2 unit tests | `apps/api/tests/unit/test_phase2_graph.py`, `test_phase2_runner.py` | Mock LLM / DB; `poetry run pytest` |
 | API tests | root `pyproject.toml` `[tool.pytest.ini_options]`, `apps/api/tests/` | `poetry run pytest` |
 
 ---

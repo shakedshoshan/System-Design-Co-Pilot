@@ -81,7 +81,7 @@
       "item": [
         {
           "name": "Sessions",
-          "description": "Design sessions; `phase=product` uses LangGraph Phase 1 (guided Q + PRD). Other phases use single-call chat.",
+          "description": "Design sessions; `phase=product` uses LangGraph Phase 1 (guided Q + PRD). `phase=architecture`: PATCH to advance (needs PRD), then POST .../architecture/run for the five-agent pipeline; free-form chat uses single-call Step 4.",
           "item": [
             {
               "name": "Create session",
@@ -149,6 +149,52 @@
                   "path": ["api", "v1", "sessions", "{{sessionId}}", "chat"]
                 },
                 "description": "Same route as Chat (product phase); forces the PRD synthesis node even if the model would still ask questions."
+              },
+              "response": []
+            },
+            {
+              "name": "Patch session — phase to architecture",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phase\": \"architecture\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sessions/{{sessionId}}",
+                  "protocol": "http",
+                  "host": ["127", "0", "0", "1"],
+                  "port": "8000",
+                  "path": ["api", "v1", "sessions", "{{sessionId}}"]
+                },
+                "description": "Requires at least one `prd` artifact. Sets `sessions.phase` to `architecture`. Idempotent if already architecture."
+              },
+              "response": []
+            },
+            {
+              "name": "Run architecture pipeline",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"notes\": \"Prefer managed Postgres; low initial traffic.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sessions/{{sessionId}}/architecture/run",
+                  "protocol": "http",
+                  "host": ["127", "0", "0", "1"],
+                  "port": "8000",
+                  "path": ["api", "v1", "sessions", "{{sessionId}}", "architecture", "run"]
+                },
+                "description": "Session must be `architecture` phase with a PRD. Runs five LangGraph agents; saves artifacts `architecture_*` and an assistant message. Optional `notes` (omit or null for none). Five LLM calls — allow time / raise `LLM_TIMEOUT_SECONDS` if needed."
               },
               "response": []
             }

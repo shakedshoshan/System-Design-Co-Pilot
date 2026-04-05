@@ -1,8 +1,8 @@
 # Phase 1 product flow — LangGraph (idea → PRD)
 
-This document describes **Step 5** of the [Project Execution Guide](../Project_Execution_Guide.md): how a chat message becomes either **guided clarification** or a **versioned PRD artifact**, and how that maps to code.
+This document describes **Step 5** of the [Project Execution Guide](../../../../../Project_Execution_Guide.md): how a chat message becomes either **guided clarification** or a **versioned PRD artifact**, and how that maps to code.
 
-**Related:** [System Design Co-Pilot Plan](../System_Design_CoPilot_Plan.md) (Guided Questioning §5.6, workflow §6), [PROJECT_CONTEXT](../PROJECT_CONTEXT.md).
+**Related:** [System Design Co-Pilot Plan](../../../../../System_Design_CoPilot_Plan.md) (Guided Questioning §5.6, workflow §6), [PROJECT_CONTEXT](../../../../../PROJECT_CONTEXT.md), [Phase 2 architecture flow](./Phase2_Architecture_LangGraph_Flow.md).
 
 ---
 
