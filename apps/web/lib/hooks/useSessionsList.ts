@@ -27,7 +27,9 @@ export function useSessionsList(): SessionsListState {
       setError(
         e instanceof ApiError
           ? e.message
-          : "Could not load sessions. Is the API running and NEXT_PUBLIC_API_URL set?",
+          : e instanceof Error
+            ? e.message
+            : "Could not load sessions. Is the API running and NEXT_PUBLIC_API_URL set?",
       );
     }
   }, []);
@@ -41,7 +43,9 @@ export function useSessionsList(): SessionsListState {
           setError(
             e instanceof ApiError
               ? e.message
-              : "Could not load sessions. Is the API running and NEXT_PUBLIC_API_URL set?",
+              : e instanceof Error
+                ? e.message
+                : "Could not load sessions. Is the API running and NEXT_PUBLIC_API_URL set?",
           );
         }
       })

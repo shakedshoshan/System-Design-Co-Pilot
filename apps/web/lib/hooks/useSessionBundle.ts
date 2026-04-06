@@ -42,7 +42,11 @@ export function useSessionBundle(sessionId: string): SessionBundleState {
       .catch((e: unknown) => {
         if (!cancelled) {
           setError(
-            e instanceof ApiError ? e.message : "Failed to load session",
+            e instanceof ApiError
+              ? e.message
+              : e instanceof Error
+                ? e.message
+                : "Failed to load session",
           );
         }
       })

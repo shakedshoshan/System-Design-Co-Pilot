@@ -2,7 +2,7 @@
 
 Scope: **Next.js 15 App Router** UI only. Domain logic and persistence live in **FastAPI** (`apps/api`) and the **Kafka worker** (`apps/worker`). This app calls the API over HTTP using the JSON envelopes described in [PROJECT_CONTEXT.md](../../PROJECT_CONTEXT.md).
 
-**Run:** `npm install` → `npm run dev` (default [http://localhost:3000](http://localhost:3000)). Set **`NEXT_PUBLIC_API_URL`** in **`apps/web/.env.local`** (Next does not load the repo-root `.env`). The API must list your dev origin in **`CORS_ORIGINS`**.
+**Run:** `npm install` → `npm run dev` (default [http://localhost:3000](http://localhost:3000)). Set **`NEXT_PUBLIC_API_URL`** in the **repo root** `.env` / `.env.local` or in **`apps/web/.env.local`** — `next.config.ts` merges `NEXT_PUBLIC_*` from the monorepo root when unset so it matches the API’s env file. The API must list your dev origin in **`CORS_ORIGINS`** (defaults in `apps/api` already include `localhost` / `127.0.0.1` on port 3000).
 
 ---
 

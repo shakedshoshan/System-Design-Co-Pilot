@@ -8,7 +8,7 @@ More detail: [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md), [README.md](./README.md
 2. `poetry install` (venv: `.venv/`)
 3. `docker compose up -d` — Postgres **5433**, Kafka **9092**
 4. `poetry run migrate upgrade head`
-5. **Web UI (optional):** `cd apps/web && npm install`. Add `apps/web/.env.local` with `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000` (Next reads env from `apps/web`, not the repo root). API **`CORS_ORIGINS`** must include the Next dev origin (`http://localhost:3000`, `http://127.0.0.1:3000` — see root `.env.example`).
+5. **Web UI (optional):** `cd apps/web && npm install`. Set `NEXT_PUBLIC_API_URL` in the **repo root** `.env` (same file as the API) or in `apps/web/.env.local`. Root `NEXT_PUBLIC_*` is merged in `apps/web/next.config.ts`. API **`CORS_ORIGINS`** must include the Next dev origin (`http://localhost:3000`, `http://127.0.0.1:3000` — see root `.env.example`).
 
 ## Commands
 

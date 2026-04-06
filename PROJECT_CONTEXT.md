@@ -6,7 +6,7 @@
 
 **LangGraph walkthroughs (API app):** [Phase 1 — product → PRD](./apps/api/app/graph/docs/Phase1_Product_LangGraph_Flow.md), [Phase 2 — architecture agents](./apps/api/app/graph/docs/Phase2_Architecture_LangGraph_Flow.md).
 
-**Last updated:** 2026-04-06 (`apps/web/FRONTEND_CONTEXT.md` — frontend flow doc)
+**Last updated:** 2026-04-06 (web `next.config.ts` — merge root `NEXT_PUBLIC_*` for monorepo `.env`)
 
 ---
 
@@ -188,7 +188,7 @@ Add one-line pointers as you implement—**only** what helps the next developer 
 | Local DB + Kafka | `docker-compose.yml` | `postgres` (pgvector), `kafka`; see root `README.md` |
 | Ops cheat sheet | [DEVELOPER_OPERATIONS.md](./DEVELOPER_OPERATIONS.md) | Server, Docker, migrations, worker, Kafka env, Postman, pytest in one place |
 | Run API | repo root or `apps/api` | **Poetry:** `poetry install` then `poetry run api` (`.venv/` at root). **pip:** `apps/api` venv + `uvicorn app.main:app --reload`. Env: repo root `.env` |
-| Run web | `apps/web` | `npm install` then `npm run dev` (default http://localhost:3000). Set `NEXT_PUBLIC_API_URL` (e.g. `http://127.0.0.1:8000`); API `CORS_ORIGINS` must include the dev origin |
+| Run web | `apps/web` | `npm install` then `npm run dev` (default http://localhost:3000). Set `NEXT_PUBLIC_API_URL` in repo root `.env` or `apps/web/.env.local` (e.g. `http://127.0.0.1:8000`); `next.config.ts` merges root `NEXT_PUBLIC_*`. API `CORS_ORIGINS` must include the dev origin (defaults cover localhost:3000) |
 | Frontend architecture | [apps/web/FRONTEND_CONTEXT.md](./apps/web/FRONTEND_CONTEXT.md) | Pages, components, hooks, `lib/api`, `lib/types`, and data flow (incl. **202** polling) |
 | Run worker | repo root | `poetry run worker` — needs `DATABASE_URL`, `OPENAI_API_KEY`, Kafka env; see `apps/worker/README.md` |
 | Kafka contracts | `app/kafka/README.md`, `envelope.py` | `schema_version` 1; `session.created`, `message.submitted`, `agent.run.*`, `artifact.updated` |
