@@ -19,6 +19,7 @@ Monorepo for an AI-guided system design assistant: **FastAPI** API (`apps/api`),
 | `packages/contracts` | Optional OpenAPI-generated types for the web app |
 | `architecture-co-pilot/` | Postman collection exports + API workspace notes |
 | `apps/api/app/routers/architecture_copilot` | Product routes under `/api/v1` (see `.cursor/skills/architecture-co-pilot-api`) |
+| `apps/api/app/graph` | **LangGraph** orchestration: Phase 1 (product → PRD) in `phase1_product/` (`workflow.py`, `edges.py`, `routing.py`, `nodes.py`); Phase 2 (architecture pipeline) in `phase2_architecture/` (`workflow.py`, `edges.py`, `nodes/`, …). Walkthroughs: [Phase 1 flow](./apps/api/app/graph/docs/Phase1_Product_LangGraph_Flow.md), [Phase 2 flow](./apps/api/app/graph/docs/Phase2_Architecture_LangGraph_Flow.md). |
 
 ## Setup (Step 0)
 
@@ -95,4 +96,4 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 `API_HOST` / `API_PORT` in `.env` are documented for later process managers; the command above uses uvicorn flags directly.
 
-Next: **Step 4** in [Project_Execution_Guide.md](./Project_Execution_Guide.md) — LLM integration (schema and Alembic are in place; see **`apps/api/app/db/README.md`**).
+**Where things stand:** [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) lists implementation status (LLM + LangGraph Phase 1/2 are in the API), env vars, and `/api/v1` routes (`…/chat`, `…/architecture/run`, etc.). **What to build next:** [Project_Execution_Guide.md](./Project_Execution_Guide.md) (e.g. Kafka worker, Next.js UI). Database details: **`apps/api/app/db/README.md`**.

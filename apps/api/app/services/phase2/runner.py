@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.models import Artifact
-from app.graph.phase2_architecture.build import build_phase2_graph
+from app.graph.phase2_architecture.workflow import build_phase2_graph
 from app.graph.state.phase2 import Phase2State
 from app.services.llm.openai_provider import OpenAILLMProvider
 

@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.models import Artifact, Message
-from app.graph.phase1_product.build import build_phase1_graph
+from app.graph.phase1_product.workflow import build_phase1_graph
 from app.graph.state.phase1 import Phase1State
 from app.services.llm.openai_provider import OpenAILLMProvider
 

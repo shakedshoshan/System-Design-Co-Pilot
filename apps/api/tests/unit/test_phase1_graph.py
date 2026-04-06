@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import pytest
 
-from app.graph.phase1_product.build import build_phase1_graph
-from app.graph.phase1_product.nodes import route_after_guided
+from app.graph.phase1_product.workflow import build_phase1_graph
+from app.graph.phase1_product.routing import route_after_guided
 from app.graph.state.phase1 import Phase1State
 
 

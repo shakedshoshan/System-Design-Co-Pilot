@@ -1,1 +1,1 @@
-"""LangGraph compiled graphs and wiring (phase1 product, phase2 architecture)."""
+"""LangGraph compiled graphs: phase1 `workflow.py` + `edges`/`routing`; phase2 `workflow.py` + `edges`."""

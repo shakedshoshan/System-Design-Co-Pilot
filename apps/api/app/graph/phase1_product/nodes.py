@@ -11,7 +11,6 @@ repair prompt. If still invalid, we degrade gracefully (guided → plain text; P
 
 import json
 import logging
-from typing import Literal
 
 from app.graph.phase1_product.json_extract import parse_guided_output, parse_prd_document
 from app.graph.phase1_product.prompts import (
@@ -153,10 +152,3 @@ def make_prd_synthesis_node(
         }
 
     return prd_synthesis
-
-
-def route_after_guided(state: Phase1State) -> Literal["prd_synthesis", "done"]:
-    """Router: PRD node runs if the user forced synthesis or the guided agent is satisfied."""
-    if state.get("force_synthesize") or state.get("ready_for_prd"):
-        return "prd_synthesis"
-    return "done"

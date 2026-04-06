@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from app.graph.phase2_architecture.build import build_phase2_graph
+from app.graph.phase2_architecture.workflow import build_phase2_graph
 from app.graph.state.phase2 import Phase2State
 
 

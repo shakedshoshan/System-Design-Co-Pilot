@@ -51,7 +51,7 @@ sequenceDiagram
 
 ## LangGraph topology (one turn)
 
-Compiled in **`apps/api/app/graph/phase1_product/build.py`**.
+Compiled in **`apps/api/app/graph/phase1_product/workflow.py`** (edges: `edges.py` + `routing.py`).
 
 ```mermaid
 flowchart LR
@@ -98,8 +98,10 @@ Defined in **`apps/api/app/graph/state/phase1.py`** as **`Phase1State`** (a `Typ
 | Piece | Location |
 |--------|-----------|
 | Graph state | `apps/api/app/graph/state/phase1.py` |
-| Graph compile | `apps/api/app/graph/phase1_product/build.py` |
-| Nodes + router fn | `apps/api/app/graph/phase1_product/nodes.py` |
+| Graph compile + fixed/conditional edges | `apps/api/app/graph/phase1_product/workflow.py` |
+| Edge branch labels | `apps/api/app/graph/phase1_product/edges.py` |
+| Conditional router | `apps/api/app/graph/phase1_product/routing.py` |
+| Nodes | `apps/api/app/graph/phase1_product/nodes.py` |
 | Prompts | `apps/api/app/graph/phase1_product/prompts.py` |
 | Pydantic LLM contracts | `apps/api/app/graph/phase1_product/schemas.py` |
 | JSON extraction | `apps/api/app/graph/phase1_product/json_extract.py` |

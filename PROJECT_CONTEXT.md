@@ -6,7 +6,7 @@
 
 **LangGraph walkthroughs (API app):** [Phase 1 — product → PRD](./apps/api/app/graph/docs/Phase1_Product_LangGraph_Flow.md), [Phase 2 — architecture agents](./apps/api/app/graph/docs/Phase2_Architecture_LangGraph_Flow.md).
 
-**Last updated:** 2026-04-05 (graph `docs/`, folder tree, Related docs)
+**Last updated:** 2026-04-06 (graph `workflow.py` / `edges.py` / `routing.py`, folder tree)
 
 ---
 
@@ -75,8 +75,8 @@ System Design Co-Pilot/
 │   │   │   ├── graph/          # LangGraph: compiled graphs, wiring
 │   │   │   │   ├── docs/       # Phase1_Product_LangGraph_Flow.md, Phase2_Architecture_LangGraph_Flow.md
 │   │   │   │   ├── state/      # Shared graph state (`phase1`, `phase2` TypedDicts)
-│   │   │   │   ├── phase1_product/   # Idea → PRD (guided Q, synthesis)
-│   │   │   │   └── phase2_architecture/  # build.py; subpackages nodes/, prompts/, schemas/, parsing/ (README)
+│   │   │   │   ├── phase1_product/   # workflow.py, edges.py, routing.py, nodes — idea → PRD
+│   │   │   │   └── phase2_architecture/  # workflow.py, edges.py; nodes/, prompts/, schemas/, parsing/ (README)
 │   │   │   ├── agents/         # Reserved (empty); phase agents live under graph/phase*_*/
 │   │   │   ├── db/             # Base, `models/`, session, `schema.sql` — see `app/db/README.md`
 │   │   │   ├── kafka/          # Producers (events to worker / bus)
@@ -183,8 +183,8 @@ Add one-line pointers as you implement—**only** what helps the next developer 
 | Log files | `apps/api/logs/app.log` | JSON lines (rotation); gitignored |
 | New product endpoints + Postman | `.cursor/skills/architecture-co-pilot-api/`, `architecture-co-pilot/` | Postman workspace **`architecture-co-pilot`**; collection **Architecture Co-Pilot**; env **Architecture Co-Pilot — local**; repo `postman/collections/*.json` |
 | LLM (OpenAI) | `app/services/llm/`, `app/main.py` lifespan | `AsyncOpenAI` in app lifespan; `OpenAILLMProvider.chat_completion`; `get_llm_provider` in `core/deps.py` |
-| LangGraph Phase 1 | `app/graph/phase1_product/`, `app/services/phase1/runner.py` | `build_phase1_graph()`; product-phase chat in `routers/architecture_copilot/sessions.py`; [Phase1_Product_LangGraph_Flow.md](./apps/api/app/graph/docs/Phase1_Product_LangGraph_Flow.md) |
-| LangGraph Phase 2 | `app/graph/phase2_architecture/README.md`, `app/services/phase2/runner.py`, `app/graph/state/phase2.py` | `build_phase2_graph()`; `nodes/` · `prompts/` · `schemas/` · `parsing/`; [Phase2_Architecture_LangGraph_Flow.md](./apps/api/app/graph/docs/Phase2_Architecture_LangGraph_Flow.md); `sessions.py`: PATCH + `POST .../architecture/run` |
+| LangGraph Phase 1 | `app/graph/phase1_product/` (`workflow.py`, `edges.py`, `routing.py`, `nodes.py`), `app/services/phase1/runner.py` | `build_phase1_graph()`; product-phase chat in `routers/architecture_copilot/sessions.py`; [Phase1_Product_LangGraph_Flow.md](./apps/api/app/graph/docs/Phase1_Product_LangGraph_Flow.md) |
+| LangGraph Phase 2 | `app/graph/phase2_architecture/README.md`, `app/services/phase2/runner.py`, `app/graph/state/phase2.py` | `build_phase2_graph()`; `workflow.py` + `edges.py` · `nodes/` · `prompts/` · `schemas/` · `parsing/`; [Phase2_Architecture_LangGraph_Flow.md](./apps/api/app/graph/docs/Phase2_Architecture_LangGraph_Flow.md); `sessions.py`: PATCH + `POST .../architecture/run` |
 | Phase 2 unit tests | `apps/api/tests/unit/test_phase2_graph.py`, `test_phase2_runner.py` | Mock LLM / DB; `poetry run pytest` |
 | API tests | root `pyproject.toml` `[tool.pytest.ini_options]`, `apps/api/tests/` | `poetry run pytest` |
 

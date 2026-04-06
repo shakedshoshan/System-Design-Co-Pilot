@@ -67,7 +67,7 @@ sequenceDiagram
 
 ## LangGraph topology (one pipeline run)
 
-Compiled in **`apps/api/app/graph/phase2_architecture/build.py`**.
+Compiled in **`apps/api/app/graph/phase2_architecture/workflow.py`**; linear **`START → … → END`** edges in **`edges.py`**.
 
 ```mermaid
 flowchart LR
@@ -103,7 +103,8 @@ Defined in **`apps/api/app/graph/state/phase2.py`** as **`Phase2State`**. The ru
 | Piece | Location |
 |--------|-----------|
 | Graph state | `apps/api/app/graph/state/phase2.py` |
-| Graph compile | `apps/api/app/graph/phase2_architecture/build.py` |
+| Graph compile + node registration | `apps/api/app/graph/phase2_architecture/workflow.py` |
+| Linear edge wiring | `apps/api/app/graph/phase2_architecture/edges.py` |
 | Node factories | `apps/api/app/graph/phase2_architecture/nodes/*.py` |
 | Shared LLM step | `apps/api/app/graph/phase2_architecture/nodes/llm_node.py` |
 | Prompts | `apps/api/app/graph/phase2_architecture/prompts/` |
