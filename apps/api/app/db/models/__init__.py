@@ -96,6 +96,18 @@ class Artifact(Base):
     session: Mapped[DesignSession] = relationship(back_populates="artifacts")
 
 
+class ProcessedKafkaEvent(Base):
+    """Consumer idempotency: one row per successfully started `message.submitted` job."""
+
+    __tablename__ = "processed_kafka_events"
+
+    idempotency_key: Mapped[str] = mapped_column(String(512), primary_key=True)
+    event_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    processed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class EventLog(Base):
     """Append-only domain / ops events for querying and dashboards (complements file JSON logs)."""
 

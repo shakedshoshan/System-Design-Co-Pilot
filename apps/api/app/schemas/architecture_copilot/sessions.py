@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -14,6 +15,36 @@ class SessionSummary(BaseModel):
     id: UUID
     title: str | None
     phase: str
+
+
+class SessionListItem(SessionSummary):
+    """Session row for list UI (includes recency sort)."""
+
+    updated_at: datetime
+
+
+class SessionsListResult(BaseModel):
+    sessions: list[SessionListItem]
+
+
+class ArtifactMeta(BaseModel):
+    id: UUID
+    artifact_type: str
+    version: int
+    created_at: datetime
+
+
+class ArtifactsListResult(BaseModel):
+    artifacts: list[ArtifactMeta]
+
+
+class ArtifactDetail(BaseModel):
+    id: UUID
+    session_id: UUID
+    artifact_type: str
+    version: int
+    content: str
+    created_at: datetime
 
 
 class ChatRequest(BaseModel):
@@ -51,3 +82,24 @@ class ArchitectureRunResult(BaseModel):
     assistant_message_id: UUID
     assistant_content: str
     artifacts: list[ArchitectureArtifactRef]
+
+
+class MessageItem(BaseModel):
+    id: UUID
+    role: str
+    content: str
+    created_at: datetime
+    extra: dict | None = None
+
+
+class MessagesListResult(BaseModel):
+    messages: list[MessageItem]
+
+
+class QueuedAgentRun(BaseModel):
+    """Returned with HTTP 202 when `KAFKA_ASYNC_RUNS` is on — worker completes the graph."""
+
+    correlation_id: UUID
+    idempotency_key: str
+    user_message_id: UUID | None = None
+    status: Literal["queued"] = "queued"

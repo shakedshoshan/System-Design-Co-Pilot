@@ -7,7 +7,7 @@ SQLAlchemy models, session factory, and how to run migrations.
 | Item | Role |
 |------|------|
 | `base.py` | `DeclarativeBase` for ORM models |
-| `models/__init__.py` | `DesignSession`, `Message`, `Artifact`, `EventLog` |
+| `models/__init__.py` | `DesignSession`, `Message`, `Artifact`, `EventLog`, `ProcessedKafkaEvent` |
 | `session.py` | `get_engine()`, `get_db()` (FastAPI), `session_factory()` |
 | `schema.sql` | Plain SQL snapshot of the **initial** core tables (for reading / diffs / pgAdmin). |
 

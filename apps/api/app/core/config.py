@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     llm_max_output_chars: int = 32_000
     llm_context_message_limit: int = 50
 
+    kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_enabled: bool = False
+    kafka_topic_events: str = "architecture_copilot_events"
+    kafka_consumer_group: str = "architecture-copilot-worker"
+    kafka_async_runs: bool = False
+
     log_to_file: bool = True
     log_file: str | None = None
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"

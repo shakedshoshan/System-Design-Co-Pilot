@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Architecture Co-Pilot",
-    "description": "System Design Co-Pilot FastAPI. Postman Cloud: workspace **architecture-co-pilot**, collection id `c479fe3d-3c7f-46c5-b1ea-0dee09c066a7`. Collection vars: `baseUrl` (default `http://127.0.0.1:8000`), `sessionId` (UUID from Create session).",
+    "description": "System Design Co-Pilot FastAPI. Postman Cloud: workspace **architecture-co-pilot**, collection id `c479fe3d-3c7f-46c5-b1ea-0dee09c066a7`. Collection vars: `baseUrl` (default `http://127.0.0.1:8000`), `sessionId` (UUID from Create session), `artifactId` (UUID from List session artifacts).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -107,6 +107,137 @@
               "response": []
             },
             {
+              "name": "List sessions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  {
+                    "key": "X-Request-ID",
+                    "value": "",
+                    "description": "Optional correlation id.",
+                    "disabled": true
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sessions?limit=50&offset=0",
+                  "protocol": "http",
+                  "host": ["127", "0", "0", "1"],
+                  "port": "8000",
+                  "path": ["api", "v1", "sessions"],
+                  "query": [
+                    { "key": "limit", "value": "50", "description": "1–200, default 50" },
+                    { "key": "offset", "value": "0", "description": "Pagination offset" }
+                  ]
+                },
+                "description": "Returns `data.sessions` (array of `{ id, title, phase, updated_at }`), most recently updated first."
+              },
+              "response": []
+            },
+            {
+              "name": "Get session",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  {
+                    "key": "X-Request-ID",
+                    "value": "",
+                    "description": "Optional correlation id.",
+                    "disabled": true
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sessions/{{sessionId}}",
+                  "protocol": "http",
+                  "host": ["127", "0", "0", "1"],
+                  "port": "8000",
+                  "path": ["api", "v1", "sessions", "{{sessionId}}"]
+                },
+                "description": "Returns `data.session` for deep links / UI header."
+              },
+              "response": []
+            },
+            {
+              "name": "List session artifacts",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  {
+                    "key": "X-Request-ID",
+                    "value": "",
+                    "description": "Optional correlation id.",
+                    "disabled": true
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sessions/{{sessionId}}/artifacts",
+                  "protocol": "http",
+                  "host": ["127", "0", "0", "1"],
+                  "port": "8000",
+                  "path": ["api", "v1", "sessions", "{{sessionId}}", "artifacts"]
+                },
+                "description": "Metadata only: `data.artifacts` — `id`, `artifact_type`, `version`, `created_at` (no bodies)."
+              },
+              "response": []
+            },
+            {
+              "name": "Get session artifact",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  {
+                    "key": "X-Request-ID",
+                    "value": "",
+                    "description": "Optional correlation id.",
+                    "disabled": true
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sessions/{{sessionId}}/artifacts/{{artifactId}}",
+                  "protocol": "http",
+                  "host": ["127", "0", "0", "1"],
+                  "port": "8000",
+                  "path": ["api", "v1", "sessions", "{{sessionId}}", "artifacts", "{{artifactId}}"]
+                },
+                "description": "Returns `data.artifact` including `content` (markdown/JSON text as stored)."
+              },
+              "response": []
+            },
+            {
+              "name": "List session messages",
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Accept", "value": "application/json" },
+                  {
+                    "key": "X-Request-ID",
+                    "value": "",
+                    "description": "Optional correlation id.",
+                    "disabled": true
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/sessions/{{sessionId}}/messages?limit=100",
+                  "protocol": "http",
+                  "host": ["127", "0", "0", "1"],
+                  "port": "8000",
+                  "path": ["api", "v1", "sessions", "{{sessionId}}", "messages"],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "100",
+                      "description": "1–500, default 100"
+                    }
+                  ]
+                },
+                "description": "Returns `data.messages` ordered oldest-first. Use to poll after HTTP 202 from chat or architecture/run when `KAFKA_ENABLED` + `KAFKA_ASYNC_RUNS` and the worker processes the job."
+              },
+              "response": []
+            },
+            {
               "name": "Chat (product phase)",
               "request": {
                 "method": "POST",
@@ -125,7 +256,7 @@
                   "port": "8000",
                   "path": ["api", "v1", "sessions", "{{sessionId}}", "chat"]
                 },
-                "description": "When session `phase` is `product`, runs LangGraph (guided questioning, optional PRD synthesis). Optional `product_action`: `default` | `synthesize_prd` (force PRD). Response may include `prd_artifact_id`, `prd_version`, `phase1_ready_for_architecture`."
+                "description": "When session `phase` is `product`, runs LangGraph (guided questioning, optional PRD synthesis). Optional `product_action`: `default` | `synthesize_prd` (force PRD). Response may include `prd_artifact_id`, `prd_version`, `phase1_ready_for_architecture`. With `KAFKA_ENABLED` + `KAFKA_ASYNC_RUNS`, returns **202** and `data.queued_agent_run` — run `poetry run worker` and poll List session messages."
               },
               "response": []
             },
@@ -194,7 +325,7 @@
                   "port": "8000",
                   "path": ["api", "v1", "sessions", "{{sessionId}}", "architecture", "run"]
                 },
-                "description": "Session must be `architecture` phase with a PRD. Runs five LangGraph agents; saves artifacts `architecture_*` and an assistant message. Optional `notes` (omit or null for none). Five LLM calls — allow time / raise `LLM_TIMEOUT_SECONDS` if needed."
+                "description": "Session must be `architecture` phase with a PRD. Runs five LangGraph agents; saves artifacts `architecture_*` and an assistant message. Optional `notes` (omit or null for none). Five LLM calls — allow time / raise `LLM_TIMEOUT_SECONDS` if needed. With `KAFKA_ENABLED` + `KAFKA_ASYNC_RUNS`, returns **202** and `data.queued_agent_run` — worker completes the pipeline; poll List session messages."
               },
               "response": []
             }
@@ -211,6 +342,11 @@
     },
     {
       "key": "sessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "artifactId",
       "value": "",
       "type": "string"
     }

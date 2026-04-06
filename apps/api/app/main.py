@@ -7,6 +7,7 @@ from openai import AsyncOpenAI
 from app.core.config import get_settings
 from app.core.logging_config import setup_logging
 from app.http.errors import register_exception_handlers
+from app.kafka.producer import KafkaEventProducer
 from app.middleware.access_log import AccessLogMiddleware
 from app.middleware.request_context import RequestContextMiddleware
 from app.routers import health
@@ -24,7 +25,18 @@ async def _lifespan(app: FastAPI):
         app.state.openai_client = client
     else:
         app.state.openai_client = None
+
+    kafka_producer: KafkaEventProducer | None = None
+    if settings.kafka_enabled:
+        kafka_producer = KafkaEventProducer(settings)
+        await kafka_producer.start()
+    app.state.kafka_producer = kafka_producer
+
     yield
+
+    if kafka_producer is not None:
+        await kafka_producer.stop()
+
     oc = getattr(app.state, "openai_client", None)
     if oc is not None:
         await oc.close()

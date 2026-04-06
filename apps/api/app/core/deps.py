@@ -31,7 +31,7 @@ RequestIdDep = Annotated[str, Depends(require_request_id)]
 DbSessionDep = Annotated[Session, Depends(get_db)]
 
 
-def get_llm_provider(request: Request, settings: SettingsDep) -> OpenAILLMProvider:
+def get_llm_provider(request: Request, settings: Settings) -> OpenAILLMProvider:
     client = getattr(request.app.state, "openai_client", None)
     if client is None:
         raise AppError(

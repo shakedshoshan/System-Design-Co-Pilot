@@ -1,5 +1,5 @@
 -- System Design Co-Pilot — core PostgreSQL DDL (human-readable reference).
--- Mirrors Alembic revision: 20260405_0001_initial_core_schema
+-- Mirrors Alembic revisions through: 20260406_0002_processed_kafka_events
 -- Source of truth for *applied* schema: apps/api/migrations/versions/
 -- UUID primary keys are generated in the application (no DB default here).
 
@@ -60,3 +60,10 @@ CREATE INDEX ix_event_logs_created_at ON event_logs (created_at);
 CREATE INDEX ix_event_logs_level ON event_logs (level);
 CREATE INDEX ix_event_logs_kind ON event_logs (kind);
 CREATE INDEX ix_event_logs_session_id ON event_logs (session_id);
+
+CREATE TABLE processed_kafka_events (
+    idempotency_key VARCHAR(512) NOT NULL,
+    event_type VARCHAR(128) NOT NULL,
+    processed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT processed_kafka_events_pkey PRIMARY KEY (idempotency_key)
+);

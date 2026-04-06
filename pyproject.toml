@@ -1,18 +1,31 @@
 [tool.poetry]
 name = "system-design-copilot"
 version = "0.1.0"
-description = "System Design Co-Pilot monorepo — Poetry env at repo root, FastAPI via path dependency"
+description = "System Design Co-Pilot monorepo — FastAPI (`app`), Kafka worker (`worker_app`), and devtools in one Poetry project"
 authors = ["System Design Co-Pilot"]
 readme = "README.md"
-packages = [{ include = "devtools" }]
+packages = [
+    { include = "devtools" },
+    { include = "app", from = "apps/api" },
+    { include = "worker_app", from = "apps/worker" },
+]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.14"
-system-design-copilot-api = { path = "apps/api", develop = true }
+fastapi = ">=0.115,<1"
+uvicorn = { version = ">=0.32,<1", extras = ["standard"] }
+pydantic-settings = ">=2.6,<3"
+psycopg = { version = ">=3.2,<4", extras = ["binary"] }
+sqlalchemy = ">=2.0,<3"
+alembic = ">=1.14,<2"
+openai = ">=1.82,<3"
+langgraph = ">=0.2,<1"
+aiokafka = ">=0.12,<1"
 
 [tool.poetry.scripts]
 api = "devtools.run_api:main"
 migrate = "devtools.run_migrate:main"
+worker = "devtools.run_worker:main"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.0,<9"

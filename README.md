@@ -43,14 +43,24 @@ poetry run api
 - **`poetry.toml`** sets **`in-project = true`**, so the environment lives in **`.venv/`** at the repo root.
 - **`poetry run api`** runs FastAPI with reload (see **`devtools/run_api.py`** and `[tool.poetry.scripts]` in root **`pyproject.toml`**).
 - **`poetry run migrate upgrade head`** applies DB migrations via **`.venv`** (see **`devtools/run_migrate.py`**). Prefer this over `poetry run alembic …` if another Conda/global env interferes.
+- **`poetry run worker`** starts the Kafka consumer (`devtools/run_worker.py`) when `KAFKA_ENABLED` + `KAFKA_ASYNC_RUNS` are used for async agent runs.
 - **Docker Postgres:** **`.\scripts\docker_up_postgres.ps1`**, then **`poetry run migrate upgrade head`**. Details: **`apps/api/app/db/README.md`**.
-- The API package is pulled in as a path dependency from **`apps/api`** (editable).
+- **`app`**, **`worker_app`**, and **`devtools`** are declared as Poetry packages in the **root** `pyproject.toml` (no nested `pyproject.toml` under `apps/api` or `apps/worker`).
 
 If Poetry picks the wrong interpreter, set it explicitly, e.g. `poetry env use "C:\Path\To\python.exe"`, then `poetry install`.
 
 ### pip / venv (without Poetry)
 
-Create a venv under `apps/api` and `pip install -e .` as in **API (Step 2)** below.
+Create a venv at the **repo root** and install the same metadata Poetry uses (PEP 517):
+
+```bash
+cd path/to/System Design Co-Pilot
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+pip install -e .
+```
+
+(`pyproject.toml` uses the Poetry build backend; pip installs it automatically for the editable build.) Then run **uvicorn** as in **API (Step 2)** below (`--app-dir apps/api`).
 
 ## Local infra (Step 1)
 
@@ -77,15 +87,10 @@ From the repo root, ensure `.env` exists (copy from `.env.example`). Settings lo
 
 **With Poetry (from repo root):** `poetry run api` (after `poetry install`). Same as the Poetry section above.
 
-**With pip (from `apps/api`):**
+**With pip (from repo root, after `pip install -e .` as above):**
 
 ```bash
-cd apps/api
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux: source .venv/bin/activate
-pip install -e .
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --app-dir apps/api
 ```
 
 - **GET** [`/health`](http://127.0.0.1:8000/health) — process liveness.

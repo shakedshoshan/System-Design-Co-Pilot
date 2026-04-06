@@ -6,7 +6,7 @@
 
 **LangGraph walkthroughs (API app):** [Phase 1 — product → PRD](./apps/api/app/graph/docs/Phase1_Product_LangGraph_Flow.md), [Phase 2 — architecture agents](./apps/api/app/graph/docs/Phase2_Architecture_LangGraph_Flow.md).
 
-**Last updated:** 2026-04-06 (graph `workflow.py` / `edges.py` / `routing.py`, folder tree)
+**Last updated:** 2026-04-06 (`apps/web/FRONTEND_CONTEXT.md` — frontend flow doc)
 
 ---
 
@@ -14,17 +14,17 @@
 
 | Area | Status | Notes |
 |------|--------|--------|
-| Repo / tooling | Step 0 done | `.env.example`, `.python-version`, `apps/api/pyproject.toml`, `apps/web/package.json` engines, root `README` + `.gitignore` |
+| Repo / tooling | Step 0 done | `.env.example`, `.python-version`, root `pyproject.toml` (packages `app`, `worker_app`, `devtools`), `apps/web/package.json` engines, `README` + `.gitignore` |
 | Docker (Postgres+pgvector, Kafka) | Step 1 done | Root `docker-compose.yml` — Postgres on **host `127.0.0.1:5433`** → container 5432; Kafka KRaft `localhost:9092`; pgvector init under `infra/docker/postgres/init/` |
 | FastAPI API | Step 2+ infra | Envelopes + `http/errors.py`, `middleware/` (request id, access log), rotating JSON `logs/app.log` |
-| DB models / migrations | Step 3 done | SQLAlchemy 2.x + Alembic; tables `sessions`, `messages`, `artifacts`, `event_logs`; `apps/api/migrations/versions/20260405_0001_*.py` |
+| DB models / migrations | Step 3 + Step 7 idempotency | SQLAlchemy 2.x + Alembic; tables `sessions`, `messages`, `artifacts`, `event_logs`, `processed_kafka_events`; migrations `20260405_0001_*`, `20260406_0002_*` |
 | LLM integration | Step 4+5 | OpenAI `AsyncOpenAI` + `OpenAILLMProvider`; guardrails in `app/services/llm/guardrails.py` |
 | LangGraph Phase 1 (PRD) | Step 5 done | `session.phase == "product"` → `app/graph/phase1_product` (guided Q + PRD synthesis) via `app/services/phase1/runner.py`; `artifact_type=prd` versioned rows |
 | LangGraph Phase 2 (agents) | Step 6 done | `PATCH /api/v1/sessions/{id}` → `phase=architecture` (needs PRD); `POST .../architecture/run` runs graph; `app/graph/phase2_architecture/` + `app/services/phase2/runner.py`; five `architecture_*` artifact types; flow [Phase2 doc](./apps/api/app/graph/docs/Phase2_Architecture_LangGraph_Flow.md) |
-| Kafka + worker | Not started | |
+| Kafka + worker | Step 7 done | `app/kafka/` (envelopes, `KafkaEventProducer`, topic `architecture_copilot_events`); API publishes `session.created` when `KAFKA_ENABLED`; async jobs when `KAFKA_ASYNC_RUNS` (`202` + `data.queued_agent_run`); `apps/worker/worker_app/` consumer + Phase 1/2 handlers; `poetry run worker`; idempotency `app/services/kafka_idempotency.py` |
 | RAG / pgvector usage | Not started | |
 | OpenTelemetry | Not started | |
-| Next.js frontend | Not started | |
+| Next.js frontend | Step 10 done | `apps/web` — App Router, `lib/api` envelope client, session list + `/sessions/[id]` chat, artifact viewer, `react-markdown` + `rehype-sanitize`, Mermaid; polls after HTTP **202** async runs |
 | Auth / guardrails / deploy | Not started | |
 
 ---
@@ -52,9 +52,9 @@ System Design Co-Pilot/
 ├── .env.example                  # Documented vars (no secrets)
 ├── .gitignore
 ├── .python-version               # 3.12.x (API + worker)
-├── pyproject.toml                # Poetry (root venv + path dep apps/api)
+├── pyproject.toml                # Poetry — single project: deps + packages `devtools`, `app` (from `apps/api`), `worker_app` (from `apps/worker`)
 ├── poetry.toml                   # virtualenv in-project → .venv/
-├── devtools/                     # `run_api`, `run_migrate` (Poetry scripts)
+├── devtools/                     # `run_api`, `run_migrate`, `run_worker` (Poetry scripts)
 ├── README.md
 ├── architecture-co-pilot/        # Postman exports + API workspace docs (see README there)
 ├── docker-compose.yml            # Postgres+pgvector, Kafka (KRaft)
@@ -71,6 +71,8 @@ System Design Co-Pilot/
 │   │   │   │   ├── llm/        # Provider abstraction, calls
 │   │   │   │   ├── phase1/     # Product-phase graph runner (hydrate state, PRD artifact)
 │   │   │   │   ├── phase2/     # Architecture pipeline (five agents → artifacts)
+│   │   │   │   ├── events/     # Kafka publish helpers (`publish.py`)
+│   │   │   │   ├── kafka_idempotency.py
 │   │   │   │   └── rag/        # Embeddings retrieval (pgvector)
 │   │   │   ├── graph/          # LangGraph: compiled graphs, wiring
 │   │   │   │   ├── docs/       # Phase1_Product_LangGraph_Flow.md, Phase2_Architecture_LangGraph_Flow.md
@@ -79,25 +81,25 @@ System Design Co-Pilot/
 │   │   │   │   └── phase2_architecture/  # workflow.py, edges.py; nodes/, prompts/, schemas/, parsing/ (README)
 │   │   │   ├── agents/         # Reserved (empty); phase agents live under graph/phase*_*/
 │   │   │   ├── db/             # Base, `models/`, session, `schema.sql` — see `app/db/README.md`
-│   │   │   ├── kafka/          # Producers (events to worker / bus)
+│   │   │   ├── kafka/          # Step 7: `envelope.py`, `producer.py`, `events/`, `serialization.py`, README
 │   │   │   └── observability/  # OpenTelemetry setup, instrumentation helpers
 │   │   ├── migrations/         # Alembic (`versions/`); not named `alembic` — avoids shadowing the PyPI package
-│   │   ├── pyproject.toml      # Python project + `requires-python`
 │   │   └── tests/              # `unit/`, `integration/`
-│   ├── worker/                 # Kafka consumers — long-running agent jobs
-│   │   ├── app/
-│   │   │   ├── consumers/      # Subscriber loops / consumer groups
-│   │   │   └── handlers/       # Per-topic handlers → graph or services
-│   │   └── tests/
-│   └── web/                    # Next.js (App Router under `app/`)
-│       ├── package.json        # `engines.node` pinned
-│       ├── .nvmrc              # Node 20.x (optional; nvm/fnm)
-│       ├── app/
-│       ├── components/         # ui/, chat/, diagrams/, layout/
-│       ├── lib/api/            # Typed fetch / API client
-│       ├── hooks/
-│       ├── public/
-│       └── styles/
+│   ├── worker/                 # Kafka consumer sources (`worker_app` packaged from root `pyproject.toml`)
+│   │   ├── worker_app/         # `main.py`, `consumers/events_consumer.py`, `handlers/`, `kafka_out.py`
+│   │   └── README.md
+│   └── web/                    # Next.js 15 App Router + Tailwind v4
+│       ├── FRONTEND_CONTEXT.md # Pages, hooks, components, lib flow (frontend-only)
+│       ├── package.json
+│       ├── .nvmrc
+│       ├── next.config.ts
+│       ├── app/                # `page.tsx`, `layout.tsx`, `globals.css`, `sessions/[id]/page.tsx`
+│       ├── components/         # `session/SessionWorkspace.tsx`, `ui/SafeMarkdown.tsx`, `diagrams/MermaidBlock.tsx`
+│       ├── lib/
+│       │   ├── types/          # `envelope`, `session`, `message`, `artifact`, `chat`, `index.ts`
+│       │   ├── hooks/          # `useSessionsList`, `useSessionBundle`, `index.ts`
+│       │   └── api/            # `client.ts`, `poll.ts` — `NEXT_PUBLIC_API_URL`
+│       └── public/
 ├── packages/
 │   └── contracts/              # (optional) OpenAPI-generated types shared with web
 ├── infra/
@@ -106,7 +108,7 @@ System Design Co-Pilot/
 └── scripts/                    # `docker_up_postgres.ps1`
 ```
 
-**Current repo:** Step 6 complete (architecture phase + five-agent graph). Next: Step 7 (Kafka) or Next.js.
+**Current repo:** Step 10 (Next.js UI + read APIs) complete. Next: RAG (Step 8) or OpenTelemetry (Step 9) per guide order.
 
 ---
 
@@ -140,12 +142,16 @@ See root [`.env.example`](./.env.example) for descriptions. Summary:
 | `DATABASE_URL` | API, Alembic | PostgreSQL connection |
 | `APP_ENV` | API | `local` (default) or `production` — stdout format + hides internal errors when `production` |
 | `LOG_TO_FILE`, `LOG_FILE`, `LOG_LEVEL`, `LOG_MAX_MB`, `LOG_BACKUP_COUNT` | API | Rotating JSON logs under `apps/api/logs` (default on) |
-| `OPENAI_API_KEY` | API | OpenAI API key (required for chat) |
+| `OPENAI_API_KEY` | API, worker | OpenAI API key (required for sync API chat; **required for worker** when using async runs) |
 | `LLM_MODEL` | API | Default chat model (default `gpt-4o`) |
 | `LLM_TIMEOUT_SECONDS` | API | OpenAI client timeout per request (default `120`); Phase 2 runs five calls in one HTTP request — increase if needed |
 | `LLM_CONTEXT_MESSAGE_LIMIT` | API | Max prior messages sent to the model (default `50`) |
 | `LLM_MAX_OUTPUT_CHARS` | API | Assistant reply cap after sanitization (default `32000`) |
 | `KAFKA_BOOTSTRAP_SERVERS` | API, worker | Kafka brokers |
+| `KAFKA_ENABLED` | API | `true` starts `KafkaEventProducer` in lifespan; publishes `session.created` on new sessions |
+| `KAFKA_TOPIC_EVENTS` | API, worker | Single topic for all envelopes (default `architecture_copilot_events`) |
+| `KAFKA_CONSUMER_GROUP` | worker | Consumer group id (default `architecture-copilot-worker`) |
+| `KAFKA_ASYNC_RUNS` | API | `true` → product `POST .../chat` and `POST .../architecture/run` return **202** + enqueue `message.submitted` (requires running worker + LLM on worker) |
 | `CORS_ORIGINS` | API | Allowed browser origins (comma-separated) |
 | `NEXT_PUBLIC_API_URL` | Web | FastAPI base URL (browser) |
 | `API_HOST`, `API_PORT` | API | Bind address (optional defaults in code later) |
@@ -162,9 +168,14 @@ Update when routes change.
 | GET | `/health` | Liveness — body `{ data, meta }` |
 | GET | `/ready` | Readiness — same envelope; 503 uses `{ error, meta }` |
 | POST | `/api/v1/sessions` | Create `DesignSession` — body `{ title? }`, returns `data.session` |
-| POST | `/api/v1/sessions/{session_id}/chat` | Body `{ content, product_action? }` (`default` \| `synthesize_prd`). If `phase` is `product`: LangGraph guided Q → optional PRD synthesis; else single-call chat (Step 4). Returns `data.chat` with optional `prd_artifact_id`, `prd_version`, `phase1_ready_for_architecture` |
+| GET | `/api/v1/sessions` | List sessions: query `limit` (1–200, default 50), `offset`. Returns `data.sessions` (`id`, `title`, `phase`, `updated_at`), newest `updated_at` first |
+| GET | `/api/v1/sessions/{session_id}` | Returns `data.session` (`id`, `title`, `phase`, `updated_at`) |
+| GET | `/api/v1/sessions/{session_id}/artifacts` | Returns `data.artifacts` — metadata only (`id`, `artifact_type`, `version`, `created_at`) |
+| GET | `/api/v1/sessions/{session_id}/artifacts/{artifact_id}` | Returns `data.artifact` including `content` |
+| GET | `/api/v1/sessions/{session_id}/messages` | Query `limit` (1–500, default 100). Returns `data.messages` (oldest first) — poll after async `202` |
+| POST | `/api/v1/sessions/{session_id}/chat` | Body `{ content, product_action? }` (`default` \| `synthesize_prd`). If `phase` is `product`: LangGraph guided Q → optional PRD synthesis; else single-call chat (Step 4). Returns `data.chat` or, when `KAFKA_ENABLED` + `KAFKA_ASYNC_RUNS`, **202** + `data.queued_agent_run` |
 | PATCH | `/api/v1/sessions/{session_id}` | Body `{ "phase": "architecture" }` — requires a `prd` artifact; idempotent if already `architecture`. Returns `data.session` |
-| POST | `/api/v1/sessions/{session_id}/architecture/run` | Body `{ notes? }`. Requires `phase=architecture` and PRD. Runs Phase 2 LangGraph; returns `data.architecture_run` (artifact refs + assistant message ids) |
+| POST | `/api/v1/sessions/{session_id}/architecture/run` | Body `{ notes? }`. Requires `phase=architecture` and PRD. Runs Phase 2 LangGraph; returns `data.architecture_run` or **202** + `data.queued_agent_run` when Kafka async mode is on |
 
 ---
 
@@ -175,9 +186,15 @@ Add one-line pointers as you implement—**only** what helps the next developer 
 | Topic | Location | Note |
 |-------|----------|------|
 | Local DB + Kafka | `docker-compose.yml` | `postgres` (pgvector), `kafka`; see root `README.md` |
+| Ops cheat sheet | [DEVELOPER_OPERATIONS.md](./DEVELOPER_OPERATIONS.md) | Server, Docker, migrations, worker, Kafka env, Postman, pytest in one place |
 | Run API | repo root or `apps/api` | **Poetry:** `poetry install` then `poetry run api` (`.venv/` at root). **pip:** `apps/api` venv + `uvicorn app.main:app --reload`. Env: repo root `.env` |
+| Run web | `apps/web` | `npm install` then `npm run dev` (default http://localhost:3000). Set `NEXT_PUBLIC_API_URL` (e.g. `http://127.0.0.1:8000`); API `CORS_ORIGINS` must include the dev origin |
+| Frontend architecture | [apps/web/FRONTEND_CONTEXT.md](./apps/web/FRONTEND_CONTEXT.md) | Pages, components, hooks, `lib/api`, `lib/types`, and data flow (incl. **202** polling) |
+| Run worker | repo root | `poetry run worker` — needs `DATABASE_URL`, `OPENAI_API_KEY`, Kafka env; see `apps/worker/README.md` |
+| Kafka contracts | `app/kafka/README.md`, `envelope.py` | `schema_version` 1; `session.created`, `message.submitted`, `agent.run.*`, `artifact.updated` |
+| Sessions + Kafka | `routers/architecture_copilot/sessions.py` | `create_session` async; GET messages; async chat / architecture enqueue |
 | Database | `app/db/README.md`, `app/db/schema.sql` | ORM; readable DDL snapshot (`schema.sql` ↔ initial migration); `poetry run migrate …` |
-| ORM models | `app/db/models/__init__.py` | `DesignSession`, `Message`, `Artifact`, `EventLog` |
+| ORM models | `app/db/models/__init__.py` | `DesignSession`, `Message`, `Artifact`, `EventLog`, `ProcessedKafkaEvent` |
 | Alembic | repo root | `poetry run migrate upgrade head` — `devtools/run_migrate.py` → `.venv` + `alembic -c apps/api/alembic.ini` |
 | API errors / correlation | `app/http/errors.py`, `middleware/` | `AppError`, validation + 500 handlers; `X-Request-ID` header |
 | Log files | `apps/api/logs/app.log` | JSON lines (rotation); gitignored |
@@ -192,9 +209,9 @@ Add one-line pointers as you implement—**only** what helps the next developer 
 
 ## Conventions
 
-- **Python:** 3.12.x recommended (`.python-version`); **3.11+** allowed (`pyproject.toml` / `apps/api` for local Poetry/pip)
+- **Python:** 3.12.x recommended (`.python-version`); **3.11+** allowed (root `pyproject.toml` `requires-python` via Poetry)
 - **Node:** ≥20.10 (`apps/web/package.json` `engines`)
-- **TypeScript / lint:** _TBD_ when Next.js is scaffolded
+- **TypeScript / lint:** Next.js — `npm run lint` in `apps/web` (ESLint + `eslint-config-next`)
 - **Branching / commits:** _TBD_
 - **Web env:** `NEXT_PUBLIC_API_URL` and optional `API_INTERNAL_URL`; **API:** `CORS_ORIGINS` matching the Next.js origin(s)
 
